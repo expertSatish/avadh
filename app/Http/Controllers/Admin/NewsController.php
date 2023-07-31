@@ -110,13 +110,43 @@ class NewsController extends Controller
     }
 
   
-    public function update(Request $request, News $news)
+    public function update(Request $request, $id)
 {
-   
+    // Retrieve the news item by ID
+    $news = News::findOrFail($id);
 
-    // Handle image upload for the new image
-    $newImageUrls = array();
+    // Validation rules for updating the news item
+    $request->validate([
+        'title' => 'required|string|max:255|unique:news,title,' . $id,
+        'start_date' => 'required|date',
+        'expiry_date' => 'required|date|after:start_date',
+        // You can add more validation rules as needed
+    ]);
+
+    // Update the news item fields
+    $news->title = $request->title;
+    $news->start_date = $request->start_date;
+    $news->expiry_date = $request->expiry_date;
+    $news->link = $request->link;
+    $news->description = $request->description;
+    $news->slug = Str::slug($request->title);
+
+    // Handle PDF file update
+    if ($request->hasFile('pdf')) {
+        // Delete the old PDF file if it exists
+        if ($news->pdf) {
+            unlink(public_path($news->pdf));
+        }
+
+        $pdfFileName = random_int(1000000, 9999999) . '-' . time() . '.' . $request->file('pdf')->getClientOriginalExtension();
+        $pdfFilePath = 'pdf/' . $pdfFileName;
+        $request->file('pdf')->move(public_path('pdf'), $pdfFileName);
+        $news->pdf = $pdfFilePath;
+    }
+
+    // Handle news images update
     if ($request->hasFile('news_images')) {
+        $imageUrls = array();
         foreach ($request->file('news_images') as $imageFile) {
             if ($imageFile->isValid()) {
                 $image_name = md5(rand(1000, 10000));
@@ -125,55 +155,28 @@ class NewsController extends Controller
                 $upload_path = 'news_images/';
                 $image_url = $upload_path . $image_full_name;
 
-                // Move the new image to the specified path
+                // Move the image to the specified path
                 $imageFile->move($upload_path, $image_full_name);
 
-                $newImageUrls[] = $image_url;
+                $imageUrls[] = $image_url;
             }
         }
-    }
-
-    // If a new image is uploaded, delete the old image associated with the News entry
-    if (!empty($newImageUrls)) {
-        $oldImageUrls = explode('|', $news->news_images);
-        foreach ($oldImageUrls as $oldImageUrl) {
-            $oldImagePath = public_path($oldImageUrl);
-            if (File::exists($oldImagePath)) {
-                File::delete($oldImagePath);
-            }
+        // Delete the old news images if they exist
+        $existingImages = explode('|', $news->news_images);
+        foreach ($existingImages as $existingImage) {
+            unlink(public_path($existingImage));
         }
+
+        $news->news_images = implode('|', $imageUrls);
     }
 
-    // Handle PDF upload
-    $pdfFilePath = null;
-    if ($request->hasFile('pdf')) {
-        $pdfFileName = random_int(1000000, 9999999) . '-' . time() . '.' . $request->file('pdf')->getClientOriginalExtension();
-        $pdfFilePath = 'pdf/' . $pdfFileName;
-        $request->file('pdf')->move(public_path('pdf'), $pdfFileName);
-    }
+    // Save the updated news item to the database
+    $news->save();
 
-    // Update the attributes of the existing News instance
-    $news->update([
-        'news_images' => !empty($newImageUrls) ? implode('|', $newImageUrls) : $news->news_images, // Keep old image URLs if no new images uploaded
-        'pdf' => $pdfFilePath ?: $news->pdf, 
-        'title' => $request->title,
-        'start_date' => $request->start_date,
-        'expiry_date' => $request->expiry_date,
-        'link' => $request->link,
-        'description' => $request->description,
-        'slug' => Str::slug($request->title),
-    ]);
-
-   
-
+    return redirect()->route('manage-news.index')->with('success', 'News updated successfully');
 }
 
-
-
-
-
-
-
+   
     public function destroy($id)
     {
         return $id;

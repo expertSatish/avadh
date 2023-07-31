@@ -46,12 +46,11 @@
             @endif
             <div class="card card-custom">
                 <!--begin::Form-->
-                <form action="{{route('manage-news.update',$data->id)}}" method="post">
+                <form action="{{route('manage-news.update',$data->id)}}" method="post" enctype="multipart/form-data">
                     @method('PATCH')
                     @csrf
                     <div class="card-body">
                         <div class="row">
-
                             <div class="col-md-4 form-group">
                                 <label>Title</label>
                                 <input class="form-control" name="title" placeholder="Title" type="text"
@@ -73,15 +72,13 @@
                             <!-- PDF File -->
                             <div class="col-md-4 form-group">
                                 <label>Pdf</label>
-                                <input class="form-control @error('pdf') is-invalid @enderror" name="pdf"
-                                    placeholder="File" type="file" />
+                                <input class="form-control"  name="pdf" placeholder="File" type="file" />
                               
                             </div>
                             <!-- News Images -->
                             <div class="col-md-4 form-group">
                                 <label>Images</label>
-                                <input class="form-control @error('news_images.*') is-invalid @enderror"
-                                    name="news_images[]" placeholder="" multiple type="file" />
+                                <input class="form-control  "name="news_images[]" placeholder="" multiple type="file" />
                                 
                             </div>
                             <!-- Link -->
